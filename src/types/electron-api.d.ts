@@ -1,5 +1,5 @@
 // electron-api.d.ts
-import { YandexUserInfoResponse, YandexDevice, TrayMenuItem, YandexModeAction, CameraStreamResult } from './index'; 
+import { YandexUserInfoResponse, YandexDevice, YandexGroup, TrayMenuItem, YandexModeAction, YandexCapabilityAction, CameraStreamResult } from './index';
 
 export interface YandexApiRequestOptions {
     retry?: boolean;
@@ -7,11 +7,15 @@ export interface YandexApiRequestOptions {
 
 export interface IYandexApi {
     fetchUserInfo: (token: string, options?: YandexApiRequestOptions) => Promise<YandexUserInfoResponse>;
-    fetchDevice: (token: string, deviceId: string) => Promise<YandexDevice>; 
+    fetchDevice: (token: string, deviceId: string) => Promise<YandexDevice>;
+    fetchGroup: (token: string, groupId: string) => Promise<YandexGroup>;
     executeScenario: (token: string, scenarioId: string) => Promise<void>;
     toggleDevice: (token: string, deviceId: string, newState: boolean) => Promise<void>;
     toggleGroup: (token: string, groupId: string, deviceIds: string[], newState: boolean) => Promise<void>;
     setDeviceMode: (token: string, deviceId: string, modeActions: YandexModeAction[], turnOn?: boolean) => Promise<void>;
+    setDeviceActions: (token: string, deviceId: string, actions: YandexCapabilityAction[]) => Promise<void>;
+    setGroupActions: (token: string, groupId: string, actions: YandexCapabilityAction[]) => Promise<void>;
+    deleteDevice: (token: string, deviceId: string) => Promise<void>;
     getCameraStream: (deviceId: string) => Promise<CameraStreamResult>;
     setCameraPrivacyMode: (deviceId: string, privacyEnabled: boolean, toggleInstance?: string) => Promise<void>;
     getQuasarCameraDevice: (deviceId: string, options?: YandexApiRequestOptions) => Promise<YandexDevice>;

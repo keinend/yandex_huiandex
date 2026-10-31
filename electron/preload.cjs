@@ -8,7 +8,11 @@ contextBridge.exposeInMainWorld('api', {
     toggleDevice: (token, deviceId, newState) => ipcRenderer.invoke('yandex-api:toggleDevice', token, deviceId, newState),
     toggleGroup: (token, groupId, deviceIds, newState) => ipcRenderer.invoke('yandex-api:toggleGroup', token, groupId, deviceIds, newState),
     setDeviceMode: (token, deviceId, modeActions, turnOn) => ipcRenderer.invoke('yandex-api:setDeviceMode', token, deviceId, modeActions, turnOn),
+    setDeviceActions: (token, deviceId, actions) => ipcRenderer.invoke('yandex-api:setDeviceActions', token, deviceId, actions),
+    setGroupActions: (token, groupId, actions) => ipcRenderer.invoke('yandex-api:setGroupActions', token, groupId, actions),
+    deleteDevice: (token, deviceId) => ipcRenderer.invoke('yandex-api:deleteDevice', token, deviceId),
     fetchDevice: (token, deviceId) => ipcRenderer.invoke('yandex-api:fetchDevice', token, deviceId),
+    fetchGroup: (token, groupId) => ipcRenderer.invoke('yandex-api:fetchGroup', token, groupId),
     getCameraStream: (deviceId) => ipcRenderer.invoke('yandex-api:getCameraStream', deviceId),
     setCameraPrivacyMode: (deviceId, privacyEnabled, toggleInstance) =>
         ipcRenderer.invoke('yandex-api:setCameraPrivacyMode', deviceId, privacyEnabled, toggleInstance),

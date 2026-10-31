@@ -23,12 +23,13 @@ export const SidebarRooms: React.FC<SidebarRoomsProps> = ({ collapsed, onToggle 
 
     return (
         <>
-            <div className="sidebar-section-title" onClick={onToggle} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button type="button" className="sidebar-section-title" onClick={onToggle} aria-expanded={!collapsed}>
                 <ChevronDown className="w-3 h-3" style={{ transform: collapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 150ms ease' }} />
                 Комнаты
-            </div>
+            </button>
             {!collapsed && roomsForHome.map(room => (
                 <button
+                    type="button"
                     key={room.id}
                     className={`sidebar-item ${ctx.activeSidebarView === 'room' && ctx.activeRoomId === room.id ? 'active' : ''}`}
                     onClick={() => ctx.onSelectRoom(room.id)}

@@ -239,7 +239,7 @@ export const SensorSettingsModal: React.FC<SensorSettingsModalProps> = ({
                 <div
                   key={prop.index}
                   className={`
-                    flex items-center gap-3 p-3 rounded-xl border-2 transition-all duration-200
+                    flex items-center gap-3 p-3 rounded-xl border-2 transition-[border-color,background-color,box-shadow] duration-200
                     ${isPrimary
                       ? 'border-primary bg-primary/10 dark:bg-primary/20 shadow-md'
                       : isSecondary
@@ -250,19 +250,22 @@ export const SensorSettingsModal: React.FC<SensorSettingsModalProps> = ({
                 >
                   {/* Primary radio */}
                   <button
+                    type="button"
                     onClick={() => {
                       setPrimaryIndex(prop.index);
                       // Remove from secondary if it was there
                       setSecondaryIndexes(prev => prev.filter(i => i !== prop.index));
                     }}
                     className={`
-                      flex-shrink-0 w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all duration-200
+                      flex-shrink-0 w-10 h-10 rounded-full border-2 flex items-center justify-center transition-colors duration-150 active:scale-[0.96]
                       ${isPrimary
                         ? 'border-primary bg-primary'
                         : 'border-gray-300 dark:border-muted hover:border-primary dark:hover:border-primary'
                       }
                     `}
                     title="Сделать основным"
+                    aria-label={`Сделать «${getInstanceLabel(prop.instance)}» основным показанием`}
+                    aria-pressed={isPrimary}
                   >
                     {isPrimary && <div className="w-2 h-2 rounded-full bg-white" />}
                   </button>
@@ -284,6 +287,7 @@ export const SensorSettingsModal: React.FC<SensorSettingsModalProps> = ({
 
                   {/* Secondary checkbox */}
                   <button
+                    type="button"
                     onClick={() => {
                       if (isPrimary) {
                         // Switching primary to secondary — clear primary
@@ -298,7 +302,7 @@ export const SensorSettingsModal: React.FC<SensorSettingsModalProps> = ({
                       }
                     }}
                     className={`
-                      flex-shrink-0 w-5 h-5 rounded border-2 flex items-center justify-center transition-all duration-200
+                      flex-shrink-0 w-10 h-10 rounded-lg border-2 flex items-center justify-center transition-colors duration-150 active:scale-[0.96]
                       ${isSecondary
                         ? 'border-blue-400 dark:border-blue-500 bg-blue-400 dark:bg-blue-500'
                         : isPrimary
@@ -307,6 +311,8 @@ export const SensorSettingsModal: React.FC<SensorSettingsModalProps> = ({
                       }
                     `}
                     title={isPrimary ? 'Сделать второстепенным' : 'Показать второстепенным'}
+                    aria-label={`${isSecondary ? 'Убрать' : 'Добавить'} «${getInstanceLabel(prop.instance)}» ${isSecondary ? 'из второстепенных' : 'во второстепенные показания'}`}
+                    aria-pressed={isSecondary}
                   >
                     {isSecondary && (
                       <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>

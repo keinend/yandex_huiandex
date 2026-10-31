@@ -15,9 +15,11 @@ interface UseUpdateNotificationReturn {
 }
 
 const checkForUpdates = async (): Promise<UpdateInfo | null> => {
+    if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('mock')) return null;
     try {
         const response = await fetch(
-            'https://api.github.com/repos/onegamerstory/Desktop-Yandex.Home-App/releases/latest'
+            'https://api.github.com/repos/onegamerstory/Desktop-Yandex.Home-App/releases/latest',
+            { signal: AbortSignal.timeout(8000) }
         );
         if (!response.ok) {
             throw new Error('Не удалось получить информацию о последней версии');
@@ -35,7 +37,7 @@ const checkForUpdates = async (): Promise<UpdateInfo | null> => {
         }
         return null;
     } catch (err) {
-        console.error('Ошибка при проверке обновлений:', err);
+        console.warn('Проверка обновлений недоступна:', err);
         return null;
     }
 };
@@ -50,8 +52,6 @@ export function useUpdateNotification(): UseUpdateNotificationReturn {
                 setUpdateInfo(newUpdateInfo);
                 setShowUpdateNotification(true);
             }
-        }).catch(error => {
-            console.error('Ошибка при проверке обновлений:', error);
         });
     }, []);
 

@@ -21,10 +21,10 @@ export const SidebarScenarios: React.FC<SidebarScenariosProps> = ({
 
     return (
         <>
-            <div className="sidebar-section-title" onClick={onToggle} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button type="button" className="sidebar-section-title" onClick={onToggle} aria-expanded={!collapsed}>
                 <ChevronDown className="w-3 h-3" style={{ transform: collapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 150ms ease' }} />
                 Сценарии
-            </div>
+            </button>
             {!collapsed && scenarios.map(s => (
                 <div key={s.id} className="sidebar-item" style={{ paddingRight: '8px' }}>
                     <span className="sidebar-item-icon">
@@ -33,14 +33,18 @@ export const SidebarScenarios: React.FC<SidebarScenariosProps> = ({
                             : React.cloneElement(getIconForScenario(s.icon, s.name) as React.ReactElement<{ className?: string }>, { className: 'w-3.5 h-3.5' })
                         }
                     </span>
-                    <span
-                        style={{ flex: 1, fontSize: 13, cursor: 'pointer' }}
+                    <button
+                        type="button"
+                        className="sidebar-item-action"
                         onClick={withLoading(`scenario:${s.id}`, () => ctx.onExecuteScenario(s.id))}
                     >
                         {s.name}
-                    </span>
+                    </button>
                     <button
+                        type="button"
                         onClick={(e) => { e.stopPropagation(); ctx.onToggleScenarioFavorite(s.id); }}
+                        className="sidebar-favorite-button"
+                        aria-label={ctx.favoriteScenarioIds.includes(s.id) ? `Убрать сценарий «${s.name}» из избранного` : `Добавить сценарий «${s.name}» в избранное`}
                         style={{
                             position: 'static', background: 'none', border: 'none', cursor: 'pointer',
                             color: ctx.favoriteScenarioIds.includes(s.id) ? 'var(--fav-star)' : 'var(--muted)',

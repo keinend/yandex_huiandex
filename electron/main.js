@@ -371,6 +371,30 @@ if (!gotTheLock) {
             }
         });
 
+        ipcMain.handle('yandex-api:setDeviceActions', async (_event, token, deviceId, actions) => {
+            try {
+                return await yandexApi.setDeviceActions(token, deviceId, actions, makeRetryCallback('setDeviceActions'));
+            } catch (error) {
+                throw new Error(error.message, { cause: error });
+            }
+        });
+
+        ipcMain.handle('yandex-api:setGroupActions', async (_event, token, groupId, actions) => {
+            try {
+                return await yandexApi.setGroupActions(token, groupId, actions, makeRetryCallback('setGroupActions'));
+            } catch (error) {
+                throw new Error(error.message, { cause: error });
+            }
+        });
+
+        ipcMain.handle('yandex-api:deleteDevice', async (_event, token, deviceId) => {
+            try {
+                return await yandexApi.deleteDevice(token, deviceId, makeRetryCallback('deleteDevice'));
+            } catch (error) {
+                throw new Error(error.message, { cause: error });
+            }
+        });
+
         ipcMain.handle('yandex-api:toggleGroup', async (event, token, groupId, deviceIds, newState) => {
             try {
                 return await yandexApi.toggleGroup(token, groupId, deviceIds, newState, makeRetryCallback('toggleGroup'));
@@ -382,6 +406,14 @@ if (!gotTheLock) {
         ipcMain.handle('yandex-api:fetchDevice', async (event, token, deviceId) => {
             try {
                 return await yandexApi.fetchDevice(token, deviceId, makeRetryCallback('fetchDevice'));
+            } catch (error) {
+                throw new Error(error.message, { cause: error });
+            }
+        });
+
+        ipcMain.handle('yandex-api:fetchGroup', async (_event, token, groupId) => {
+            try {
+                return await yandexApi.fetchGroup(token, groupId, makeRetryCallback('fetchGroup'));
             } catch (error) {
                 throw new Error(error.message, { cause: error });
             }

@@ -98,6 +98,7 @@ export const FanSettingsModal: React.FC<FanSettingsModalProps> = ({
 
   // Компонент для отображения иконки режима
   const ModeIconButton: React.FC<{
+    value?: string;
     label: string;
     icon: React.ComponentType<{ className?: string }>;
     isSelected: boolean;

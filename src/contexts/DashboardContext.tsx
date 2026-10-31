@@ -1,5 +1,5 @@
 import React, { createContext, useContext } from 'react';
-import { YandexUserInfoResponse, YandexHousehold, YandexDevice, YandexGroup, YandexModeAction, CameraStreamResult } from '../types/index';
+import { YandexUserInfoResponse, YandexHousehold, YandexDevice, YandexGroup, YandexModeAction, YandexCapabilityAction, CameraStreamResult } from '../types/index';
 
 export interface DashboardContextValue {
     // Данные
@@ -20,6 +20,11 @@ export interface DashboardContextValue {
     onToggleGroup: (id: string, currentState: boolean) => Promise<void>;
     onExecuteScenario: (id: string) => Promise<void>;
     onSetDeviceMode: (deviceId: string, modeActions: YandexModeAction[], turnOn?: boolean) => Promise<void>;
+    onSetDeviceActions: (deviceId: string, actions: YandexCapabilityAction[]) => Promise<void>;
+    onSetGroupActions: (groupId: string, actions: YandexCapabilityAction[]) => Promise<void>;
+    onDeleteDevice: (deviceId: string) => Promise<void>;
+    onRefreshDevice: (deviceId: string) => Promise<YandexDevice>;
+    onRefreshGroup: (groupId: string) => Promise<YandexGroup>;
     onGetCameraStream: (deviceId: string) => Promise<CameraStreamResult>;
     onSetCameraPrivacy: (deviceId: string, enabled: boolean, instance?: string) => Promise<void>;
     onRefresh: () => void;
@@ -34,6 +39,7 @@ export interface DashboardContextValue {
 
     // UI-состояния
     isRefreshing: boolean;
+    isActionPending: (kind: 'device' | 'group' | 'scenario', id: string) => boolean;
     isAutostartEnabled: boolean;
     onToggleAutostart: () => void;
     onSwitchHousehold: (householdId?: string) => void;

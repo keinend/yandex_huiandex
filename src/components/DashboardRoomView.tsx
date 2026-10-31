@@ -4,7 +4,6 @@ import { GroupCard } from './cards/GroupCard';
 import { DeviceCardAdapter } from './cards/DeviceCardAdapter';
 import { useDashboardContext } from '../contexts/DashboardContext';
 import { UseDashboardStateReturn } from '../hooks/useDashboardState';
-import { isLightGroup } from '../constants';
 
 interface DashboardRoomViewProps {
     state: UseDashboardStateReturn;
@@ -61,12 +60,7 @@ export const DashboardRoomView: React.FC<DashboardRoomViewProps> = ({
                     onToggleFavorite={ctx.onToggleGroupFavorite}
                     onOpenSettings={state.handleOpenDeviceSettings}
                     onOpenCameraStream={state.openCameraStream}
-                    onOpenGroupSettings={(g) => {
-                        const gDevices = devicesForHome.filter(d => g.devices.includes(d.id));
-                        if (isLightGroup(gDevices)) state.openGroupLightSettings(g);
-                        else if (gDevices.length > 0 && gDevices.every(d => d.type === 'devices.types.thermostat.ac' || d.type === 'devices.types.thermostat')) state.openGroupThermostatSettings(g);
-                        else if (gDevices.length > 0 && gDevices.every(d => d.type === 'devices.types.ventilation.fan')) state.openGroupFanSettings(g);
-                    }}
+                    onOpenGroupSettings={state.openGroupCapabilitySettings}
                 />
             ))}
         </>

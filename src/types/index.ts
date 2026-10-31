@@ -14,21 +14,61 @@ export interface YandexScenario {
 
 export interface YandexModeAction {
   instance: string;
-  value: any;
+  value: YandexStateValue;
   type?: string;
+  relative?: boolean;
+}
+
+export type YandexStateValue = boolean | number | string | Record<string, unknown>;
+
+export interface YandexCapabilityActionState {
+  instance: string;
+  value: YandexStateValue;
+  relative?: boolean;
+}
+
+export interface YandexCapabilityAction {
+  type: string;
+  state: YandexCapabilityActionState;
 }
 
 export interface YandexCapabilityState {
   instance: string;
-  value: boolean | number | string | Record<string, unknown>;
+  value: YandexStateValue;
 }
 
 export interface YandexModeOption {
   value: string;
-  name: string;
+  name?: string;
 }
 
-export interface YandexModeCapabilityParameters {
+export interface YandexRangeParameters {
+  min?: number;
+  max?: number;
+  precision?: number;
+}
+
+export interface YandexColorScene {
+  id?: string;
+  value?: string;
+  name?: string;
+}
+
+export interface YandexCapabilityParameters {
+  instance?: string;
+  unit?: string;
+  random_access?: boolean;
+  range?: YandexRangeParameters;
+  modes?: YandexModeOption[];
+  color_model?: 'hsv' | 'rgb' | string;
+  temperature_k?: YandexRangeParameters;
+  color_scene?: { scenes?: YandexColorScene[] };
+  split?: boolean;
+  [key: string]: unknown;
+}
+
+/** Backward-compatible narrower shape used by the existing climate modals. */
+export interface YandexModeCapabilityParameters extends YandexCapabilityParameters {
   instance: string;
   modes: YandexModeOption[];
 }
@@ -38,7 +78,8 @@ export interface YandexCapability {
   retrievable: boolean;
   reportable: boolean;
   state?: YandexCapabilityState;
-  parameters?: YandexModeCapabilityParameters | Record<string, unknown>;
+  parameters?: YandexCapabilityParameters;
+  last_updated?: number;
 }
 
 export interface YandexPropertyState {
@@ -70,12 +111,21 @@ export interface YandexDevice {
   id: string;
   name: string;
   type: string;
+  description?: string;
+  household_id?: string;
+  aliases?: string[];
   external_id?: string;
   skill_id?: string;
   room?: string;
   groups?: string[];
   capabilities: YandexCapability[];
   properties?: YandexProperty[];
+  device_info?: {
+    manufacturer?: string;
+    model?: string;
+    hw_version?: string;
+    sw_version?: string;
+  };
 }
 
 export interface YandexGroup {

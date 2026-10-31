@@ -1,7 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import './index.css';
-import App from './App';
 import { debugError, debugLog, refreshDebugFlags } from './utils/debugLog';
 
 refreshDebugFlags();
@@ -15,18 +14,25 @@ window.addEventListener('unhandledrejection', (event) => {
   debugError('react', 'unhandledrejection', event.reason);
 });
 
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
-}
+const bootstrap = async () => {
+  if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('mock')) {
+    await import('./devMockApi');
+  }
 
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  // <React.StrictMode>
-    <App />
-  // </React.StrictMode>
-);
+  // App reads the Electron bridge during module evaluation, so the optional
+  // browser-only development bridge must be installed before this import.
+  const { default: App } = await import('./App');
+  const rootElement = document.getElementById('root');
+  if (!rootElement) {
+    throw new Error("Could not find root element to mount to");
+  }
 
-debugLog('react', 'root.render called', {
-  rootChildren: rootElement.childElementCount,
-});
+  const root = ReactDOM.createRoot(rootElement);
+  root.render(<App />);
+
+  debugLog('react', 'root.render called', {
+    rootChildren: rootElement.childElementCount,
+  });
+};
+
+void bootstrap();

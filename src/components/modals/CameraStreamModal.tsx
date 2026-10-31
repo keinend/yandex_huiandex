@@ -63,7 +63,7 @@ export const CameraStreamModal: React.FC<CameraStreamModalProps> = ({
   const webrtcConnectionRef = useRef<GoloomConnection | null>(null);
   const loadStreamRef = useRef<((silent?: boolean) => void) | null>(null);
   const lastWebrtcRoomRef = useRef<import('../../types/index').YandexWebRtcRoom | null>(null);
-  const reconnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const reconnectTimerRef = useRef<number | null>(null);
   const credentialRefreshInFlightRef = useRef(false);
   const activeConnectionIdRef = useRef<string | null>(null);
   const scheduleReconnectRef = useRef<() => void>(() => {});
@@ -71,7 +71,7 @@ export const CameraStreamModal: React.FC<CameraStreamModalProps> = ({
   const refreshInFlightRef = useRef<Promise<YandexDevice> | null>(null);
   /** Incremented on close/unmount — async work must match to continue. */
   const sessionRef = useRef(0);
-  const pendingTimersRef = useRef<Set<ReturnType<typeof setTimeout>>>(new Set());
+  const pendingTimersRef = useRef<Set<number>>(new Set());
   const streamRetryCountRef = useRef(0);
   const audioBoostRef = useRef<VideoAudioBoost | null>(null);
   const qualityMenuRef = useRef<HTMLDivElement>(null);
@@ -303,7 +303,7 @@ export const CameraStreamModal: React.FC<CameraStreamModalProps> = ({
     }
 
     credentialRefreshInFlightRef.current = true;
-    let refreshWatchdog: ReturnType<typeof setTimeout> | null = scheduleSessionTimer(session, () => {
+    let refreshWatchdog: number | null = scheduleSessionTimer(session, () => {
       if (!credentialRefreshInFlightRef.current) return;
       credentialRefreshInFlightRef.current = false;
       lastWebrtcRoomRef.current = null;
@@ -918,7 +918,7 @@ export const CameraStreamModal: React.FC<CameraStreamModalProps> = ({
               <Maximize2 className="w-5 h-5" />
             </button>
             <button
-              onClick={loadStream}
+              onClick={() => void loadStream()}
               disabled={isLoading || isTogglingPrivacy}
               className="p-2 rounded-lg text-gray-500 dark:text-slate-400 hover:bg-gray-100 dark:hover:bg-slate-700 transition-colors disabled:opacity-50"
               title="Обновить поток"
@@ -1029,7 +1029,7 @@ export const CameraStreamModal: React.FC<CameraStreamModalProps> = ({
                   </button>
                 )}
                 <button
-                  onClick={loadStream}
+                  onClick={() => void loadStream()}
                   className="px-4 py-2 rounded-lg bg-[#176f91] dark:bg-primary hover:bg-[#145a72] dark:hover:bg-primary-hover text-white text-sm font-medium"
                 >
                   Повторить

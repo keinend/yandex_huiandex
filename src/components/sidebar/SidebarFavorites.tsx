@@ -73,10 +73,10 @@ export const SidebarFavorites: React.FC<SidebarFavoritesProps> = ({
 
     return (
         <>
-            <div className="sidebar-section-title" onClick={onToggle} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button type="button" className="sidebar-section-title" onClick={onToggle} aria-expanded={!collapsed}>
                 <ChevronDown className="w-3 h-3" style={{ transform: collapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 150ms ease' }} />
                 Избранное
-            </div>
+            </button>
             {!collapsed && (<>
                 {favoriteScenarios.map(s => (
                     <div key={s.id} className="sidebar-item" style={{ paddingRight: '8px' }}>
@@ -91,8 +91,10 @@ export const SidebarFavorites: React.FC<SidebarFavoritesProps> = ({
                             onClick={withLoading(`scenario:${s.id}`, () => ctx.onExecuteScenario(s.id))}
                         >{s.name}</span>
                         <button
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); ctx.onToggleScenarioFavorite(s.id); }}
                             className="device-fav is-fav"
+                            aria-label={`Убрать сценарий «${s.name}» из избранного`}
                             style={{ position: 'static', opacity: 1 }}
                         >
                             <Star className="w-3 h-3" fill="currentColor" />
@@ -123,8 +125,10 @@ export const SidebarFavorites: React.FC<SidebarFavoritesProps> = ({
                                 {d.name}
                             </span>
                             <button
+                                type="button"
                                 onClick={(e) => { e.stopPropagation(); ctx.onToggleDeviceFavorite(d.id); }}
                                 className="device-fav is-fav"
+                                aria-label={`Убрать «${d.name}» из избранного`}
                                 style={{ position: 'static', opacity: 1 }}
                             >
                                 <Star className="w-3 h-3" fill="currentColor" />
@@ -156,8 +160,10 @@ export const SidebarFavorites: React.FC<SidebarFavoritesProps> = ({
                                 {d.name}
                             </span>
                             <button
+                                type="button"
                                 onClick={(e) => { e.stopPropagation(); ctx.onToggleDeviceFavorite(d.id); }}
                                 className="device-fav is-fav"
+                                aria-label={`Убрать «${d.name}» из избранного`}
                                 style={{ position: 'static', opacity: 1 }}
                             >
                                 <Star className="w-3 h-3" fill="currentColor" />
@@ -188,8 +194,10 @@ export const SidebarFavorites: React.FC<SidebarFavoritesProps> = ({
                                 {g.name}
                             </span>
                             <button
+                                type="button"
                                 onClick={(e) => { e.stopPropagation(); ctx.onToggleGroupFavorite(g.id); }}
                                 className="device-fav is-fav"
+                                aria-label={`Убрать группу «${g.name}» из избранного`}
                                 style={{ position: 'static', opacity: 1 }}
                             >
                                 <Star className="w-3 h-3" fill="currentColor" />

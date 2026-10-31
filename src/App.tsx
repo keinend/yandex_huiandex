@@ -36,9 +36,11 @@ function App() {
     const { userData, isRefreshing, refreshDashboardData, setUserData } = yandexData;
 
     // 4. Зависит от userData, token, refreshDashboardData, requestXTokenAuth
-    const actions = useDeviceActions(token, userData, showNotification, refreshDashboardData, requestXTokenAuth);
+    const actions = useDeviceActions(token, userData, setUserData, showNotification, refreshDashboardData, requestXTokenAuth);
     const { handleToggleDevice, handleToggleGroup, handleExecuteScenario,
-            handleSetDeviceMode, handleGetCameraStream, handleSetCameraPrivacy } = actions;
+            handleSetDeviceMode, handleSetDeviceActions, handleSetGroupActions, handleDeleteDevice,
+            handleRefreshDevice, handleRefreshGroup, handleGetCameraStream, handleSetCameraPrivacy,
+            pendingActionKeys } = actions;
     const household = useHousehold(userData, token, refreshDashboardData);
     const { activeHouseholdId, handleSwitchHousehold } = household;
 
@@ -314,6 +316,11 @@ function App() {
                     onToggleGroup: handleToggleGroup,
                     onExecuteScenario: handleExecuteScenario,
                     onSetDeviceMode: handleSetDeviceMode,
+                    onSetDeviceActions: handleSetDeviceActions,
+                    onSetGroupActions: handleSetGroupActions,
+                    onDeleteDevice: handleDeleteDevice,
+                    onRefreshDevice: handleRefreshDevice,
+                    onRefreshGroup: handleRefreshGroup,
                     onGetCameraStream: handleGetCameraStream,
                     onSetCameraPrivacy: handleSetCameraPrivacy,
                     onRefresh: () => token && refreshDashboardData(token),
@@ -324,6 +331,7 @@ function App() {
                     onSelectRoom,
                     onSelectGroup,
                     isRefreshing,
+                    isActionPending: (kind, id) => pendingActionKeys.has(`${kind}:${id}`),
                     isAutostartEnabled,
                     onToggleAutostart: handleToggleAutostart,
                     onSwitchHousehold: handleSwitchHousehold,

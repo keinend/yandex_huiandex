@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback, useEffect, useRef, useState } from 'react';
 import { YandexScenario } from '../types/index';
 import { Sidebar } from './Sidebar';
 import { DashboardHomeView } from './DashboardHomeView';
@@ -10,21 +10,39 @@ import { GroupLightSettingsModal } from './modals/GroupLightSettingsModal';
 import { GroupThermostatSettingsModal } from './modals/GroupThermostatSettingsModal';
 import { FanSettingsModal } from './modals/FanSettingsModal';
 import { GroupFanSettingsModal } from './modals/GroupFanSettingsModal';
-import { CameraStreamModal } from './modals/CameraStreamModal';
 import { SensorSettingsModal } from './modals/SensorSettingsModal';
 import { InfoModal } from './modals/InfoModal';
-import { Pencil, Power, Sun, Moon, RefreshCw, Info, LogOut, X } from 'lucide-react';
+import { CapabilityControlModal } from './modals/CapabilityControlModal';
+import { Pencil, Power, Sun, Moon, RefreshCw, Info, LogOut, X, Search, PanelLeftClose, PanelLeftOpen, Home, Layers3, Play, SlidersHorizontal } from 'lucide-react';
 import { useTheme } from '../contexts/ThemeContext';
 import { useDashboardContext } from '../contexts/DashboardContext';
 import { useDashboardState } from '../hooks/useDashboardState';
 import { isLightDevice, isLightGroup, isCameraDevice, isSensorDevice } from '../constants';
 import packageJson from '../../package.json';
 
+const CameraStreamModal = React.lazy(() => import('./modals/CameraStreamModal').then((module) => ({ default: module.CameraStreamModal })));
+
 const DEFAULT_HOME_NAME = 'Мой Дом';
 
 export const Dashboard: React.FC = () => {
     const ctx = useDashboardContext();
     const { theme, toggleTheme } = useTheme();
+    const searchInputRef = useRef<HTMLInputElement>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [isSearchFocused, setIsSearchFocused] = useState(false);
+    const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(() => {
+        if (window.matchMedia('(max-width: 720px)').matches) return true;
+        return localStorage.getItem('ui:sidebarCollapsed') === 'true';
+    });
+
+    useEffect(() => {
+        const narrowScreen = window.matchMedia('(max-width: 720px)');
+        const handleNarrowScreen = (event: MediaQueryListEvent) => {
+            if (event.matches) setIsSidebarCollapsed(true);
+        };
+        narrowScreen.addEventListener('change', handleNarrowScreen);
+        return () => narrowScreen.removeEventListener('change', handleNarrowScreen);
+    }, []);
 
     const state = useDashboardState(
         ctx.activeHouseholdId,
@@ -117,6 +135,57 @@ export const Dashboard: React.FC = () => {
     const activeScenarios = ctx.data.scenarios.filter(
         s => s.is_active && isScenarioInCurrentHome(s)
     );
+
+    const searchResults = useMemo(() => {
+        const query = searchQuery.trim().toLocaleLowerCase('ru-RU');
+        if (!query) return [];
+        const matches = (values: Array<string | undefined>) => values.some(value => value?.toLocaleLowerCase('ru-RU').includes(query));
+        return [
+            ...roomsForHome.filter(room => matches([room.name])).map(room => ({ type: 'room' as const, id: room.id, name: room.name, meta: 'Комната' })),
+            ...groupsForHome.filter(group => matches([group.name])).map(group => ({ type: 'group' as const, id: group.id, name: group.name, meta: `${group.devices.length} устройств` })),
+            ...devicesForHome.filter(device => matches([device.name, device.type, device.description, ...(device.aliases ?? [])])).map(device => ({ type: 'device' as const, id: device.id, name: device.name, meta: 'Устройство' })),
+            ...activeScenarios.filter(scenario => matches([scenario.name])).map(scenario => ({ type: 'scenario' as const, id: scenario.id, name: scenario.name, meta: 'Сценарий' })),
+        ].slice(0, 12);
+    }, [searchQuery, roomsForHome, groupsForHome, devicesForHome, activeScenarios]);
+
+    useEffect(() => {
+        const handleShortcut = (event: KeyboardEvent) => {
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+                event.preventDefault();
+                searchInputRef.current?.focus();
+            }
+            if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'r') {
+                event.preventDefault();
+                ctx.onRefresh();
+            }
+            if (event.key === 'Escape' && document.activeElement === searchInputRef.current) {
+                setSearchQuery('');
+                searchInputRef.current?.blur();
+            }
+        };
+        document.addEventListener('keydown', handleShortcut);
+        return () => document.removeEventListener('keydown', handleShortcut);
+    }, [ctx.onRefresh]);
+
+    const toggleSidebar = () => {
+        setIsSidebarCollapsed(current => {
+            const next = !current;
+            localStorage.setItem('ui:sidebarCollapsed', String(next));
+            return next;
+        });
+    };
+
+    const selectSearchResult = async (result: typeof searchResults[number]) => {
+        setSearchQuery('');
+        setIsSearchFocused(false);
+        if (result.type === 'room') ctx.onSelectRoom(result.id);
+        if (result.type === 'group') ctx.onSelectGroup(result.id);
+        if (result.type === 'device') {
+            const device = devicesForHome.find(item => item.id === result.id);
+            if (device) state.handleOpenDeviceSettings(device);
+        }
+        if (result.type === 'scenario') await ctx.onExecuteScenario(result.id);
+    };
 
     const favoriteScenarios = ctx.data.scenarios.filter(
         s => ctx.favoriteScenarioIds.includes(s.id) && isScenarioInCurrentHome(s)
@@ -243,62 +312,131 @@ export const Dashboard: React.FC = () => {
     };
 
     return (
-        <div className="window">
+        <div className={`window ${isSidebarCollapsed ? 'sidebar-collapsed' : ''}`}>
             <div className="body">
-                <Sidebar onOpenCameraStream={state.openCameraStream} />
+                <Sidebar onOpenCameraStream={state.openCameraStream} onClose={() => setIsSidebarCollapsed(true)} />
+                {!isSidebarCollapsed && (
+                    <button type="button" className="sidebar-scrim" onClick={() => setIsSidebarCollapsed(true)} aria-label="Закрыть боковую панель" />
+                )}
                 <main className="content">
                     <div className="content-header">
-                        <div>
-                            <h1>{contentTitle}</h1>
-                            <div className="subtitle">{contentSubtitle}</div>
+                        <div className="content-title-wrap">
+                            <button
+                                type="button"
+                                onClick={toggleSidebar}
+                                className="header-btn sidebar-toggle-button"
+                                aria-label={isSidebarCollapsed ? 'Показать боковую панель' : 'Скрыть боковую панель'}
+                                title={isSidebarCollapsed ? 'Показать боковую панель' : 'Скрыть боковую панель'}
+                            >
+                                {isSidebarCollapsed ? <PanelLeftOpen aria-hidden="true" /> : <PanelLeftClose aria-hidden="true" />}
+                            </button>
+                            <div>
+                                <h1>{contentTitle}</h1>
+                                <div className="subtitle">{contentSubtitle}</div>
+                            </div>
                         </div>
+                        <div className="content-toolbar">
+                            <div className="dashboard-search">
+                                <Search aria-hidden="true" />
+                                <input
+                                    ref={searchInputRef}
+                                    type="search"
+                                    value={searchQuery}
+                                    onChange={(event) => setSearchQuery(event.target.value)}
+                                    onFocus={() => setIsSearchFocused(true)}
+                                    onBlur={() => window.setTimeout(() => setIsSearchFocused(false), 120)}
+                                    placeholder="Найти устройство или сценарий"
+                                    aria-label="Поиск по умному дому"
+                                    aria-controls="dashboard-search-results"
+                                    aria-expanded={isSearchFocused && searchQuery.trim().length > 0}
+                                />
+                                <kbd>Ctrl K</kbd>
+                                {isSearchFocused && searchQuery.trim() && (
+                                    <div id="dashboard-search-results" className="search-results" role="listbox">
+                                        {searchResults.length > 0 ? searchResults.map(result => (
+                                            <button
+                                                type="button"
+                                                role="option"
+                                                key={`${result.type}-${result.id}`}
+                                                onMouseDown={(event) => event.preventDefault()}
+                                                onClick={() => void selectSearchResult(result)}
+                                            >
+                                                <span className="search-result-icon" aria-hidden="true">
+                                                    {result.type === 'room' && <Home />}
+                                                    {result.type === 'group' && <Layers3 />}
+                                                    {result.type === 'device' && <SlidersHorizontal />}
+                                                    {result.type === 'scenario' && <Play />}
+                                                </span>
+                                                <span><strong>{result.name}</strong><small>{result.meta}</small></span>
+                                            </button>
+                                        )) : (
+                                            <div className="search-empty">Ничего не найдено. Измените запрос.</div>
+                                        )}
+                                    </div>
+                                )}
+                            </div>
                         {ctx.activeSidebarView === 'home' && (
                             <div className="content-actions">
                                 <button
+                                    type="button"
                                     onClick={state.toggleEditMode}
                                     className={`header-btn ${state.edit.isEditMode ? 'active' : ''}`}
                                     title={state.edit.isEditMode ? 'Выйти из режима редактирования' : 'Редактировать дашборд'}
+                                    aria-label={state.edit.isEditMode ? 'Выйти из режима редактирования' : 'Редактировать дашборд'}
+                                    aria-pressed={state.edit.isEditMode}
                                 >
                                     <Pencil className="w-4 h-4" />
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={ctx.onToggleAutostart}
                                     className={`header-btn ${ctx.isAutostartEnabled ? 'active' : ''}`}
                                     title={ctx.isAutostartEnabled ? 'Автозапуск включен' : 'Автозапуск выключен'}
+                                    aria-label={ctx.isAutostartEnabled ? 'Выключить автозапуск' : 'Включить автозапуск'}
+                                    aria-pressed={ctx.isAutostartEnabled}
                                 >
                                     <Power className="w-4 h-4" />
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={toggleTheme}
                                     className="header-btn"
                                     title={theme === 'dark' ? 'Светлая тема' : 'Тёмная тема'}
+                                    aria-label={theme === 'dark' ? 'Включить светлую тему' : 'Включить тёмную тему'}
                                 >
                                     {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={ctx.onRefresh}
                                     disabled={ctx.isRefreshing}
                                     className="header-btn"
                                     title="Обновить"
+                                    aria-label="Обновить данные"
                                 >
                                     <RefreshCw className={`w-4 h-4 ${ctx.isRefreshing ? 'animate-spin' : ''}`} />
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => state.setShowInfoModal(true)}
                                     className="header-btn"
                                     title="О программе"
+                                    aria-label="О программе"
                                 >
                                     <Info className="w-4 h-4" />
                                 </button>
                                 <button
+                                    type="button"
                                     onClick={() => state.setShowConfirmModal(true)}
                                     className="header-btn"
                                     title="Выйти"
+                                    aria-label="Выйти из аккаунта"
                                 >
                                     <LogOut className="w-4 h-4" />
                                 </button>
                             </div>
                         )}
+                        </div>
                     </div>
                     {renderContent()}
                 </main>
@@ -306,23 +444,23 @@ export const Dashboard: React.FC = () => {
 
             {/* Modals */}
             {state.modal.showConfirmModal && (
-                <div className="fixed inset-0 z-[100] bg-black/50 dark:bg-black/70 flex items-center justify-center backdrop-blur-sm">
+                <div className="fixed inset-0 z-[100] bg-black/50 dark:bg-black/70 flex items-center justify-center backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="logout-dialog-title" aria-describedby="logout-dialog-description">
                     <div className="bg-white dark:bg-surface border border-gray-200 dark:border-border-soft rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-300">
                         <div className="flex items-start justify-between mb-4">
-                            <h3 className="text-xl font-bold text-slate-900 dark:text-card-fg">Подтверждение выхода</h3>
-                            <button onClick={() => state.setShowConfirmModal(false)} className="text-slate-600 dark:text-muted hover:text-slate-900 dark:hover:text-card-fg transition-colors">
+                            <h3 id="logout-dialog-title" className="text-xl font-bold text-slate-900 dark:text-card-fg">Выйти из аккаунта?</h3>
+                            <button type="button" onClick={() => state.setShowConfirmModal(false)} className="text-slate-600 dark:text-muted hover:text-slate-900 dark:hover:text-card-fg transition-colors" aria-label="Закрыть подтверждение выхода">
                                 <X className="w-5 h-5" />
                             </button>
                         </div>
-                        <p className="text-slate-700 dark:text-card-fg mb-6 text-sm">
-                            Вы уверены, что хотите выйти из учетной записи? После этого действия для последующего входа потребуется токен.
+                        <p id="logout-dialog-description" className="text-slate-700 dark:text-card-fg mb-6 text-sm">
+                            Сохранённые токены будут удалены. Для следующего входа понадобится OAuth‑токен, а для камер — повторное подтверждение по QR‑коду.
                         </p>
                         <div className="flex justify-end gap-3">
-                            <button onClick={() => state.setShowConfirmModal(false)} className="px-4 py-2 text-sm font-medium rounded-lg transition-colors border border-red-400 dark:border-red-500 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30">
-                                Нет
+                            <button type="button" onClick={() => state.setShowConfirmModal(false)} className="px-4 py-2 text-sm font-medium rounded-lg transition-colors border border-gray-300 dark:border-border text-slate-700 dark:text-card-fg hover:bg-gray-50 dark:hover:bg-surface-warm">
+                                Отменить
                             </button>
-                            <button onClick={() => { ctx.onLogout(); state.setShowConfirmModal(false); }} className="px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-primary hover:bg-primary-hover text-white">
-                                Да, уверен
+                            <button type="button" onClick={() => { ctx.onLogout(); state.setShowConfirmModal(false); }} className="px-4 py-2 text-sm font-medium rounded-lg transition-colors bg-red-700 hover:bg-red-800 text-white">
+                                Выйти из аккаунта
                             </button>
                         </div>
                     </div>
@@ -387,14 +525,16 @@ export const Dashboard: React.FC = () => {
             )}
 
             {state.modal.selectedCameraDevice && (
-                <CameraStreamModal
-                    device={ctx.data.devices.find((item) => item.id === state.modal.selectedCameraDevice!.id) ?? state.modal.selectedCameraDevice}
-                    isOpen={!!state.modal.selectedCameraDevice}
-                    onClose={state.closeCameraStream}
-                    onGetStream={ctx.onGetCameraStream}
-                    onSetPrivacy={ctx.onSetCameraPrivacy}
-                    onPrivacyChanged={ctx.onRefresh}
-                />
+                <React.Suspense fallback={<div className="fixed inset-0 z-[100] grid place-items-center bg-black/50" role="status"><span className="sr-only">Загрузка камеры</span></div>}>
+                    <CameraStreamModal
+                        device={ctx.data.devices.find((item) => item.id === state.modal.selectedCameraDevice!.id) ?? state.modal.selectedCameraDevice}
+                        isOpen={!!state.modal.selectedCameraDevice}
+                        onClose={state.closeCameraStream}
+                        onGetStream={ctx.onGetCameraStream}
+                        onSetPrivacy={ctx.onSetCameraPrivacy}
+                        onPrivacyChanged={ctx.onRefresh}
+                    />
+                </React.Suspense>
             )}
 
             {state.modal.selectedSensorDevice && (
@@ -404,6 +544,29 @@ export const Dashboard: React.FC = () => {
                     onClose={state.closeSensorSettings}
                     onSave={state.setSensorDisplayConfig}
                     initialConfig={state.sensorDisplayConfig[state.modal.selectedSensorDevice.id] ?? null}
+                />
+            )}
+
+            {state.modal.selectedCapabilityDevice && (
+                <CapabilityControlModal
+                    entity={ctx.data.devices.find(item => item.id === state.modal.selectedCapabilityDevice!.id) ?? state.modal.selectedCapabilityDevice}
+                    kind="device"
+                    isOpen={!!state.modal.selectedCapabilityDevice}
+                    onClose={state.closeCapabilitySettings}
+                    onApply={(actions) => ctx.onSetDeviceActions(state.modal.selectedCapabilityDevice!.id, actions)}
+                    onDelete={() => ctx.onDeleteDevice(state.modal.selectedCapabilityDevice!.id)}
+                    onRefresh={ctx.onRefreshDevice}
+                />
+            )}
+
+            {state.modal.selectedCapabilityGroup && (
+                <CapabilityControlModal
+                    entity={ctx.data.groups.find(item => item.id === state.modal.selectedCapabilityGroup!.id) ?? state.modal.selectedCapabilityGroup}
+                    kind="group"
+                    isOpen={!!state.modal.selectedCapabilityGroup}
+                    onClose={state.closeGroupCapabilitySettings}
+                    onApply={(actions) => ctx.onSetGroupActions(state.modal.selectedCapabilityGroup!.id, actions)}
+                    onRefresh={ctx.onRefreshGroup}
                 />
             )}
 

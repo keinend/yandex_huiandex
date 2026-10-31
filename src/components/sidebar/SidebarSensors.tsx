@@ -33,11 +33,11 @@ export const SidebarSensors: React.FC<SidebarSensorsProps> = ({ collapsed, onTog
 
     return (
         <>
-            <div className="sidebar-section-title" onClick={onToggle} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button type="button" className="sidebar-section-title" onClick={onToggle} aria-expanded={!collapsed}>
                 <ChevronDown className="w-3 h-3" style={{ transform: collapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 150ms ease' }} />
                 Датчики
                 <span className="sidebar-item-badge">{allSensors.length}</span>
-            </div>
+            </button>
             {!collapsed && allSensors.map(d => {
                 const isFav = ctx.favoriteDeviceIds.includes(d.id);
                 return (
@@ -49,15 +49,15 @@ export const SidebarSensors: React.FC<SidebarSensorsProps> = ({ collapsed, onTog
                             {d.name}
                         </span>
                         <button
+                            type="button"
                             onClick={(e) => { e.stopPropagation(); ctx.onToggleDeviceFavorite(d.id); }}
-                            className={isFav ? 'device-fav is-fav' : ''}
+                            className={`device-fav ${isFav ? 'is-fav' : ''}`}
+                            aria-label={isFav ? `Убрать «${d.name}» из избранного` : `Добавить «${d.name}» в избранное`}
                             style={{
                                 position: 'static',
-                                ...(isFav ? {} : {
-                                    background: 'none', border: 'none', cursor: 'pointer',
-                                    color: 'var(--muted)', display: 'flex', alignItems: 'center',
-                                    justifyContent: 'center', padding: 2, flexShrink: 0,
-                                }),
+                                background: 'none', border: 'none', cursor: 'pointer',
+                                color: isFav ? 'var(--fav-star)' : 'var(--muted)', display: 'flex', alignItems: 'center',
+                                justifyContent: 'center', flexShrink: 0,
                             }}
                         >
                             <Star className="w-3.5 h-3.5" fill={isFav ? 'currentColor' : 'none'} />

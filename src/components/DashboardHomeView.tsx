@@ -5,7 +5,7 @@ import { GroupCard } from './cards/GroupCard';
 import { DeviceCardAdapter } from './cards/DeviceCardAdapter';
 import { useDashboardContext } from '../contexts/DashboardContext';
 import { UseDashboardStateReturn } from '../hooks/useDashboardState';
-import { isLightGroup, isSensorDevice } from '../constants';
+import { isSensorDevice } from '../constants';
 import { Building2, SquareSquare, ScrollText, Lightbulb, Star, ChevronRight, ChevronDown } from 'lucide-react';
 
 interface DashboardHomeViewProps {
@@ -48,6 +48,12 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
     hasFavoriteSensors,
 }) => {
     const ctx = useDashboardContext();
+    const groupSectionRoomId = new Map(
+        groupsForHome.map(group => {
+            const firstRoom = roomsForHome.find(room => group.devices.some(deviceId => room.devices.includes(deviceId)));
+            return [group.id, firstRoom?.id] as const;
+        })
+    );
 
     // ---- Render helpers ----
     const renderStatsRow = () => (
@@ -155,12 +161,7 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
                                 onToggleFavorite={ctx.onToggleGroupFavorite}
                                 onOpenSettings={state.handleOpenDeviceSettings}
                                 onOpenCameraStream={state.openCameraStream}
-                                onOpenGroupSettings={(g) => {
-                                    const gDevices = devicesForHome.filter(d => g.devices.includes(d.id));
-                                    if (isLightGroup(gDevices)) state.openGroupLightSettings(g);
-                                    else if (gDevices.length > 0 && gDevices.every(d => d.type === 'devices.types.thermostat.ac' || d.type === 'devices.types.thermostat')) state.openGroupThermostatSettings(g);
-                                    else if (gDevices.length > 0 && gDevices.every(d => d.type === 'devices.types.ventilation.fan')) state.openGroupFanSettings(g);
-                                }}
+                                onOpenGroupSettings={state.openGroupCapabilitySettings}
                                 isEditMode={state.edit.isEditMode}
                                 getEffectiveHidden={state.getEffectiveHidden}
                                 getIconHiddenState={state.getIconHiddenState}
@@ -190,15 +191,17 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
                         .flatMap(g => g.devices)
                 );
                 const standaloneDevices = roomDevices.filter(d => !groupedDeviceIds.has(d.id));
-                const roomGroups = groupsForHome.filter(g => g.devices.some(deviceId => roomDevices.some(d => d.id === deviceId)));
+                // A group can contain devices from several rooms. Render it once,
+                // alongside the first matching room, so the dashboard stays compact.
+                const roomGroups = groupsForHome.filter(group => groupSectionRoomId.get(group.id) === room.id);
 
                 return (
                     <div key={room.id} className="room-section">
-                        <div className="room-header" onClick={() => state.toggleRoom(room.id)}>
+                        <button type="button" className="room-header" onClick={() => state.toggleRoom(room.id)} aria-expanded={!isRoomCollapsed}>
                             {isRoomCollapsed ? <ChevronRight className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} /> : <ChevronDown className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} />}
                             <h2>{room.name}</h2>
                             <span className="room-count">{roomDevices.length}</span>
-                        </div>
+                        </button>
                         {!isRoomCollapsed && (
                             <>
                                 {standaloneDevices.length > 0 && (
@@ -224,12 +227,7 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
                                         onToggleFavorite={ctx.onToggleGroupFavorite}
                                         onOpenSettings={state.handleOpenDeviceSettings}
                                         onOpenCameraStream={state.openCameraStream}
-                                        onOpenGroupSettings={(g) => {
-                                            const gDevices = devicesForHome.filter(d => g.devices.includes(d.id));
-                                            if (isLightGroup(gDevices)) state.openGroupLightSettings(g);
-                                            else if (gDevices.length > 0 && gDevices.every(d => d.type === 'devices.types.thermostat.ac' || d.type === 'devices.types.thermostat')) state.openGroupThermostatSettings(g);
-                                            else if (gDevices.length > 0 && gDevices.every(d => d.type === 'devices.types.ventilation.fan')) state.openGroupFanSettings(g);
-                                        }}
+                                        onOpenGroupSettings={state.openGroupCapabilitySettings}
                                         isEditMode={state.edit.isEditMode}
                                         getEffectiveHidden={state.getEffectiveHidden}
                                         getIconHiddenState={state.getIconHiddenState}
@@ -249,11 +247,11 @@ export const DashboardHomeView: React.FC<DashboardHomeViewProps> = ({
                 if (unassignedDevices.length === 0) return null;
                 return (
                     <div className="room-section">
-                        <div className="room-header" onClick={state.toggleUnassignedDevices}>
+                        <button type="button" className="room-header" onClick={state.toggleUnassignedDevices} aria-expanded={!state.collapse.isUnassignedDevicesCollapsed}>
                             {state.collapse.isUnassignedDevicesCollapsed ? <ChevronRight className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} /> : <ChevronDown className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} />}
                             <h2>Без комнаты</h2>
                             <span className="room-count">{unassignedDevices.length}</span>
-                        </div>
+                        </button>
                         {!state.collapse.isUnassignedDevicesCollapsed && (
                             <div className="device-grid">
                                 {unassignedDevices

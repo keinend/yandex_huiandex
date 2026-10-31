@@ -3,3 +3,4 @@ export * from './deviceTypes';
 export * from './formatting';
 export * from './parsing';
 export * from './camera';
+export * from './capabilities';

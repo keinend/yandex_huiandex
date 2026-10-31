@@ -17,6 +17,8 @@ interface ModalState {
     selectedFanGroup: YandexGroup | null;
     selectedCameraDevice: YandexDevice | null;
     selectedSensorDevice: YandexDevice | null;
+    selectedCapabilityDevice: YandexDevice | null;
+    selectedCapabilityGroup: YandexGroup | null;
 }
 
 interface CollapseState {
@@ -52,6 +54,10 @@ export interface UseDashboardStateReturn {
     closeCameraStream: () => void;
     openSensorSettings: (device: YandexDevice) => void;
     closeSensorSettings: () => void;
+    openCapabilitySettings: (device: YandexDevice) => void;
+    closeCapabilitySettings: () => void;
+    openGroupCapabilitySettings: (group: YandexGroup) => void;
+    closeGroupCapabilitySettings: () => void;
     setShowConfirmModal: (show: boolean) => void;
     setShowInfoModal: (show: boolean) => void;
 
@@ -144,6 +150,8 @@ export function useDashboardState(
     const [selectedFanGroup, setSelectedFanGroup] = useState<YandexGroup | null>(null);
     const [selectedCameraDevice, setSelectedCameraDevice] = useState<YandexDevice | null>(null);
     const [selectedSensorDevice, setSelectedSensorDevice] = useState<YandexDevice | null>(null);
+    const [selectedCapabilityDevice, setSelectedCapabilityDevice] = useState<YandexDevice | null>(null);
+    const [selectedCapabilityGroup, setSelectedCapabilityGroup] = useState<YandexGroup | null>(null);
 
     // --- SENSOR DISPLAY CONFIG ---
     const loadSensorDisplayConfig = (householdId: string | null): Record<string, SensorDisplayConfig> => {
@@ -389,6 +397,22 @@ export function useDashboardState(
         setSelectedSensorDevice(null);
     }, []);
 
+    const openCapabilitySettings = useCallback((device: YandexDevice) => {
+        setSelectedCapabilityDevice(device);
+    }, []);
+
+    const closeCapabilitySettings = useCallback(() => {
+        setSelectedCapabilityDevice(null);
+    }, []);
+
+    const openGroupCapabilitySettings = useCallback((group: YandexGroup) => {
+        setSelectedCapabilityGroup(group);
+    }, []);
+
+    const closeGroupCapabilitySettings = useCallback(() => {
+        setSelectedCapabilityGroup(null);
+    }, []);
+
     const handleOpenDeviceSettings = useCallback((device: YandexDevice) => {
         if (isCameraDevice(device)) {
             openCameraStream(device);
@@ -398,10 +422,8 @@ export function useDashboardState(
             openSensorSettings(device);
             return;
         }
-        if (isLightDevice(device.type)) openLightSettings(device);
-        else if (device.type === 'devices.types.ventilation.fan') openFanSettings(device);
-        else openThermostatSettings(device);
-    }, [isCameraDevice, isLightDevice, openCameraStream, openLightSettings, openFanSettings, openThermostatSettings, openSensorSettings]);
+        openCapabilitySettings(device);
+    }, [isCameraDevice, openCameraStream, openSensorSettings, openCapabilitySettings]);
 
     // --- Apply handlers ---
 
@@ -475,6 +497,8 @@ export function useDashboardState(
             selectedFanGroup,
             selectedCameraDevice,
             selectedSensorDevice,
+            selectedCapabilityDevice,
+            selectedCapabilityGroup,
         },
         openThermostatSettings,
         closeThermostatSettings,
@@ -492,6 +516,10 @@ export function useDashboardState(
         closeCameraStream,
         openSensorSettings,
         closeSensorSettings,
+        openCapabilitySettings,
+        closeCapabilitySettings,
+        openGroupCapabilitySettings,
+        closeGroupCapabilitySettings,
         setShowConfirmModal,
         setShowInfoModal,
 

@@ -19,12 +19,13 @@ export const SidebarGroups: React.FC<SidebarGroupsProps> = ({ collapsed, onToggl
 
     return (
         <>
-            <div className="sidebar-section-title" onClick={onToggle} style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4 }}>
+            <button type="button" className="sidebar-section-title" onClick={onToggle} aria-expanded={!collapsed}>
                 <ChevronDown className="w-3 h-3" style={{ transform: collapsed ? 'rotate(-90deg)' : 'none', transition: 'transform 150ms ease' }} />
                 Группы устройств
-            </div>
+            </button>
             {!collapsed && groupsForHome.map(group => (
                 <button
+                    type="button"
                     key={group.id}
                     className={`sidebar-item ${ctx.activeSidebarView === 'group' && ctx.activeGroupId === group.id ? 'active' : ''}`}
                     onClick={() => ctx.onSelectGroup(group.id)}

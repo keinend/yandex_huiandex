@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { YandexGroup, YandexDevice } from '../../types/index';
 import { DeviceCardAdapter } from './DeviceCardAdapter';
 import { Loader2, Power, ChevronDown, ChevronRight, Settings, Star } from 'lucide-react';
+import { isControllableCapability } from '../../constants';
+import { useDashboardContext } from '../../contexts/DashboardContext';
 
 
 interface GroupCardProps {
@@ -14,6 +16,7 @@ interface GroupCardProps {
   isFavorite?: boolean;
   onToggleFavorite?: (id: string) => void;
   onOpenSettings?: (device: YandexDevice) => void;
+  onOpenCameraStream?: (device: YandexDevice) => void;
   onOpenGroupSettings?: (group: YandexGroup) => void;
   isEditMode?: boolean;
   getEffectiveHidden?: (cardId: string) => boolean;
@@ -31,14 +34,17 @@ export const GroupCard: React.FC<GroupCardProps> = ({
   isFavorite = false,
   onToggleFavorite,
   onOpenSettings,
+  onOpenCameraStream,
   onOpenGroupSettings,
   isEditMode = false,
   getEffectiveHidden = (_cardId: string) => false,
   getIconHiddenState = (_cardId: string) => false,
   onToggleDeviceVisibility,
 }) => {
+  const ctx = useDashboardContext();
   const [loading, setLoading] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const isBusy = loading || ctx.isActionPending('group', group.id);
 
   const groupDevices = useMemo(() => {
     return devices.filter(d => group.devices.includes(d.id));
@@ -51,6 +57,9 @@ export const GroupCard: React.FC<GroupCardProps> = ({
         isThermostatGroup: false,
         isFanGroup: false,
         groupIsOn: false,
+        groupIsMixed: false,
+        onCount: 0,
+        totalOnOff: 0,
         hasOnOffCapability: group.capabilities.some(c => c.type === 'devices.capabilities.on_off'),
         visibleDevices: [] as YandexDevice[],
       };
@@ -77,53 +86,75 @@ export const GroupCard: React.FC<GroupCardProps> = ({
       isThermostatGroup: isThermostat,
       isFanGroup: isFan,
       groupIsOn: totalOnOff > 0 && onCount === totalOnOff,
+      groupIsMixed: onCount > 0 && onCount < totalOnOff,
+      onCount,
+      totalOnOff,
       hasOnOffCapability: !!onOffCap,
       visibleDevices: groupDevices.filter(d => !getEffectiveHidden(`device_${d.id}`)),
     };
   }, [groupDevices, group.capabilities, getEffectiveHidden]);
 
   const handleToggleGroup = async () => {
-    if (!groupInfo.hasOnOffCapability || loading) return;
+    if (!groupInfo.hasOnOffCapability || isBusy) return;
     setLoading(true);
     try { await onToggleGroup(group.id, groupInfo.groupIsOn); }
     catch (err) { console.error(err); }
     finally { setLoading(false); }
   };
+  const groupStateText = groupInfo.groupIsOn
+    ? 'Всё включено'
+    : groupInfo.groupIsMixed
+      ? `${groupInfo.onCount} из ${groupInfo.totalOnOff}`
+      : 'Выключено';
 
   return (
-    <div className="group-wrapper" style={{ opacity: isEditMode && getIconHiddenState(`group_${group.id}`) ? 0.5 : 1, filter: isEditMode && getIconHiddenState(`group_${group.id}`) ? 'grayscale(1)' : 'none' }}>
+    <section className="group-wrapper" aria-labelledby={`group-title-${group.id}`} style={{ opacity: isEditMode && getIconHiddenState(`group_${group.id}`) ? 0.5 : 1, filter: isEditMode && getIconHiddenState(`group_${group.id}`) ? 'grayscale(1)' : 'none' }}>
       <div className="group-header">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, cursor: 'pointer' }} onClick={() => setIsCollapsed(!isCollapsed)}>
+        <button type="button" className="group-collapse-button" onClick={() => setIsCollapsed(!isCollapsed)} aria-expanded={!isCollapsed} aria-label={`${group.name}, ${groupStateText}`}>
           {isCollapsed ? <ChevronRight className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} /> : <ChevronDown className="w-4 h-4" style={{ color: 'rgba(255,255,255,0.5)' }} />}
-          <h3>{group.name}</h3>
+          <h3 id={`group-title-${group.id}`}>{group.name}</h3>
           <span className="sidebar-item-badge" style={{ fontSize: 11 }}>{groupDevices.length}</span>
-        </div>
+          {groupInfo.totalOnOff > 0 && (
+            <span className={`group-state ${groupInfo.groupIsOn ? 'is-on' : groupInfo.groupIsMixed ? 'is-mixed' : ''}`}>
+              {groupStateText}
+            </span>
+          )}
+        </button>
         <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
           {onToggleFavorite && (
-            <div
+            <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); onToggleFavorite(group.id); }}
-              style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', background: isFavorite ? 'color-mix(in oklab, var(--fav-star) 10%, transparent)' : 'transparent', color: isFavorite ? 'var(--fav-star)' : 'rgba(255,255,255,0.5)' }}
+              className={`group-favorite-button ${isFavorite ? 'is-fav' : ''}`}
+              aria-label={isFavorite ? `Удалить группу «${group.name}» из избранного` : `Добавить группу «${group.name}» в избранное`}
+              aria-pressed={isFavorite}
             >
               <Star className="w-3.5 h-3.5" fill={isFavorite ? 'currentColor' : 'none'} />
-            </div>
+            </button>
           )}
-          {(groupInfo.isLightGroup || groupInfo.isThermostatGroup || groupInfo.isFanGroup) && onOpenGroupSettings && (
+          {group.capabilities.some(isControllableCapability) && onOpenGroupSettings && (
             <button
+              type="button"
               onClick={() => onOpenGroupSettings(group)}
               className="group-power-btn"
-              title="Настройки"
+              disabled={isBusy}
+              title="Все настройки группы"
+              aria-label={`Открыть настройки группы «${group.name}»`}
             >
               <Settings />
             </button>
           )}
           {groupInfo.hasOnOffCapability && (
             <button
+              type="button"
               onClick={handleToggleGroup}
-              disabled={loading}
-              className={`group-power-btn ${groupInfo.groupIsOn ? 'is-on' : ''}`}
-              title={groupInfo.groupIsOn ? 'Выключить' : 'Включить'}
+              disabled={isBusy}
+              className={`group-power-btn ${groupInfo.groupIsOn ? 'is-on' : groupInfo.groupIsMixed ? 'is-mixed' : ''}`}
+              title={groupInfo.groupIsOn ? 'Выключить всю группу' : 'Включить всю группу'}
+              aria-label={groupInfo.groupIsOn ? `Выключить группу «${group.name}»` : `Включить группу «${group.name}»`}
+              aria-pressed={groupInfo.groupIsOn}
             >
-              {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Power />}
+              {isBusy ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Power />}
             </button>
           )}
         </div>
@@ -134,7 +165,7 @@ export const GroupCard: React.FC<GroupCardProps> = ({
           {groupInfo.visibleDevices.length > 0 ? (
             <div className="device-grid">
               {groupInfo.visibleDevices.map(device => (
-                <DeviceCardAdapter key={device.id} device={device} onToggle={onToggleDevice} isFavorite={favoriteDeviceIds.includes(device.id)} onToggleFavorite={onToggleDeviceFavorite} onOpenSettings={onOpenSettings} isEditMode={isEditMode} iconHiddenState={getIconHiddenState(`device_${device.id}`)} onToggleVisibility={() => onToggleDeviceVisibility?.(`device_${device.id}`)} />
+                <DeviceCardAdapter key={device.id} device={device} onToggle={onToggleDevice} isFavorite={favoriteDeviceIds.includes(device.id)} onToggleFavorite={onToggleDeviceFavorite} onOpenSettings={onOpenSettings} onOpenCameraStream={onOpenCameraStream} isEditMode={isEditMode} iconHiddenState={getIconHiddenState(`device_${device.id}`)} onToggleVisibility={() => onToggleDeviceVisibility?.(`device_${device.id}`)} />
               ))}
             </div>
           ) : (
@@ -146,6 +177,6 @@ export const GroupCard: React.FC<GroupCardProps> = ({
       {groupDevices.length === 0 && (
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)' }}>В этой группе нет устройств</p>
       )}
-    </div>
+    </section>
   );
 };

@@ -134,60 +134,25 @@ export const fetchDevice = async (token, deviceId, onRetryAttempt = null) => {
 
 // 2. Выполнение сценария
 export const executeScenario = async (token, scenarioId, onRetryAttempt = null) => {
-    return withRetry(async () => {
-        const response = await fetch(`${BASE_URL}/scenarios/${scenarioId}/actions`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-        });
+    const response = await fetch(`${BASE_URL}/scenarios/${scenarioId}/actions`, {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+    });
 
-        if (!response.ok) {
-            throw new Error(`Не удалось запустить сценарий: ${response.status}`);
-        }
-    }, onRetryAttempt);
+    if (!response.ok) {
+        throw new Error(`Не удалось запустить сценарий: ${response.status}`);
+    }
 };
 
 // 3. Переключение устройства
 export const toggleDevice = async (token, deviceId, newState, onRetryAttempt = null) => {
-    const body = {
-        devices: [
-            {
-                id: deviceId,
-                actions: [
-                    {
-                        type: "devices.capabilities.on_off",
-                        state: {
-                            instance: "on",
-                            value: newState
-                        }
-                    }
-                ]
-            }
-        ]
-    };
-
-    return withRetry(async () => {
-        const response = await fetch(`${BASE_URL}/devices/actions`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(body)
-        });
-
-        if (!response.ok) {
-            throw new Error(`Не удалось изменить состояние устройства: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        const deviceResult = data.devices?.find((d) => d.id === deviceId);
-        if (deviceResult && 'error_code' in deviceResult) {
-            throw new Error(`Ошибка устройства: ${deviceResult.error_message || deviceResult.error_code}`);
-        }
-    }, onRetryAttempt);
+    return setDeviceActions(token, deviceId, [{
+        type: 'devices.capabilities.on_off',
+        state: { instance: 'on', value: newState },
+    }], onRetryAttempt);
 };
 
 // 4. Установка режима устройства (для кондиционеров и других устройств с режимами)
@@ -239,79 +204,18 @@ export const setDeviceMode = async (token, deviceId, modeActions, turnOn = false
         });
     }
 
-    const body = {
-        devices: [
-            {
-                id: deviceId,
-                actions: actions
-            }
-        ]
-    };
-
-    return withRetry(async () => {
-        const response = await fetch(`${BASE_URL}/devices/actions`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(body)
-        });
-
-        if (!response.ok) {
-            throw new Error(`Не удалось изменить режим устройства: ${response.status}`);
-        }
-        
-        const data = await response.json();
-        const deviceResult = data.devices?.find((d) => d.id === deviceId);
-        if (deviceResult && 'error_code' in deviceResult) {
-            throw new Error(`Ошибка устройства: ${deviceResult.error_message || deviceResult.error_code}`);
-        }
-    }, onRetryAttempt);
+    return setDeviceActions(token, deviceId, actions, onRetryAttempt);
 };
 
 // 5. Управление группой устройств (включение/выключение всех устройств в группе)
 export const toggleGroup = async (token, groupId, deviceIds, newState, onRetryAttempt = null) => {
     if (!deviceIds || deviceIds.length === 0) {
-        throw new Error(`В группе нет устройств`);
+        throw new Error('В группе нет устройств');
     }
-
-    const devices = deviceIds.map(id => ({
-        id,
-        actions: [
-            {
-                type: "devices.capabilities.on_off",
-                state: {
-                    instance: "on",
-                    value: newState
-                }
-            }
-        ]
-    }));
-
-    const body = { devices };
-
-    return withRetry(async () => {
-        const response = await fetch(`${BASE_URL}/devices/actions`, {
-            method: 'POST',
-            headers: {
-                'Authorization': `Bearer ${token}`,
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(body)
-        });
-
-        if (!response.ok) {
-            throw new Error(`Не удалось переключить группу: ${response.status}`);
-        }
-
-        const data = await response.json();
-        const errors = (data.devices || []).filter(d => 'error_code' in d);
-        if (errors.length > 0) {
-            const firstError = errors[0];
-            throw new Error(`Ошибка устройства: ${firstError.error_message || firstError.error_code}`);
-        }
-    }, onRetryAttempt);
+    return setGroupActions(token, groupId, [{
+        type: 'devices.capabilities.on_off',
+        state: { instance: 'on', value: newState },
+    }], onRetryAttempt);
 };
 
 // 6. Получение HLS-видеопотока с камеры (через Quasar API — нужен x-token, не IoT OAuth)
@@ -403,4 +307,127 @@ export const setCameraPrivacyMode = async (
     }
 
     throw lastError ?? new Error('Не удалось изменить режим приватности');
+};
+
+const validateActions = (actions) => {
+    if (!Array.isArray(actions) || actions.length === 0) {
+        throw new Error('Не выбрано ни одного действия');
+    }
+
+    for (const action of actions) {
+        if (!action || typeof action.type !== 'string' || !action.type.startsWith('devices.capabilities.')) {
+            throw new Error('Некорректный тип умения устройства');
+        }
+        if (!action.state || typeof action.state.instance !== 'string' || !('value' in action.state)) {
+            throw new Error('Некорректное состояние умения устройства');
+        }
+    }
+};
+
+const throwActionErrors = (devices = []) => {
+    const failures = devices.flatMap((device) => {
+        const deviceFailure = device.error_code
+            ? [{ deviceId: device.id, message: device.error_message || device.error_code }]
+            : [];
+        const capabilityFailures = (device.capabilities ?? [])
+            .filter((capability) => capability.state?.action_result?.status === 'ERROR')
+            .map((capability) => ({
+                deviceId: device.id,
+                message: capability.state.action_result.error_message
+                    || capability.state.action_result.error_code
+                    || 'устройство отклонило действие',
+            }));
+        return [...deviceFailure, ...capabilityFailures];
+    });
+
+    if (failures.length > 0) {
+        const first = failures[0];
+        const suffix = failures.length > 1 ? ` (и ещё ${failures.length - 1})` : '';
+        throw new Error(`Устройство ${first.deviceId}: ${first.message}${suffix}`);
+    }
+};
+
+// Универсальное управление всеми официальными capability-типами Yandex Smart Home.
+export const setDeviceActions = async (token, deviceId, actions, onRetryAttempt = null) => {
+    validateActions(actions);
+    const response = await fetch(`${BASE_URL}/devices/actions`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ devices: [{ id: deviceId, actions }] }),
+    });
+
+    if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+            throw new Error('Ошибка авторизации. Проверьте ваш токен.');
+        }
+        throw new Error(`Не удалось изменить устройство: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    throwActionErrors(data.devices);
+    return data;
+};
+
+// 1.2 Получение актуального состояния группы по ID
+export const fetchGroup = async (token, groupId, onRetryAttempt = null) => {
+    return withRetry(async () => {
+        const response = await fetch(`${BASE_URL}/groups/${groupId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            if (response.status === 401 || response.status === 403) {
+                throw new Error('Ошибка авторизации. Проверьте ваш токен.');
+            }
+            throw new Error(`Не удалось получить группу ${groupId}: ${response.status} ${response.statusText}`);
+        }
+
+        return await response.json();
+    }, onRetryAttempt);
+};
+
+// Нативный групповой endpoint применяет умение только к совместимым устройствам группы
+// и возвращает отдельный результат для каждого устройства.
+export const setGroupActions = async (token, groupId, actions, onRetryAttempt = null) => {
+    validateActions(actions);
+    const response = await fetch(`${BASE_URL}/groups/${groupId}/actions`, {
+        method: 'POST',
+        headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ actions }),
+    });
+
+    if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+            throw new Error('Ошибка авторизации. Проверьте ваш токен.');
+        }
+        throw new Error(`Не удалось изменить группу: ${response.status} ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    throwActionErrors(data.devices);
+    return data;
+};
+
+export const deleteDevice = async (token, deviceId, onRetryAttempt = null) => {
+    const response = await fetch(`${BASE_URL}/devices/${deviceId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+    });
+
+    if (!response.ok) {
+        if (response.status === 401 || response.status === 403) {
+            throw new Error('Ошибка авторизации. Проверьте ваш токен.');
+        }
+        throw new Error(`Не удалось удалить устройство: ${response.status} ${response.statusText}`);
+    }
 };

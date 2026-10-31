@@ -1,4 +1,4 @@
-import { YandexUserInfoResponse, YandexDevice, YandexModeAction, CameraStreamResult } from '../types/index';
+import { YandexUserInfoResponse, YandexDevice, YandexGroup, YandexModeAction, YandexCapabilityAction, CameraStreamResult } from '../types/index';
 
 const yandexApi = window.api;
 
@@ -75,6 +75,49 @@ export const setDeviceMode = async (token: string, deviceId: string, modeActions
         await yandexApi.setDeviceMode(token, deviceId, modeActions, turnOn);
     } catch (error) {
         console.error('Ошибка при установке режима устройства через IPC:', error);
+        throw error;
+    }
+};
+
+export const fetchDevice = async (token: string, deviceId: string): Promise<YandexDevice> => {
+    return yandexApi.fetchDevice(token, deviceId);
+};
+
+export const fetchGroup = async (token: string, groupId: string): Promise<YandexGroup> => {
+    return yandexApi.fetchGroup(token, groupId);
+};
+
+export const setDeviceActions = async (
+    token: string,
+    deviceId: string,
+    actions: YandexCapabilityAction[],
+): Promise<void> => {
+    try {
+        await yandexApi.setDeviceActions(token, deviceId, actions);
+    } catch (error) {
+        console.error('Ошибка при управлении умениями устройства через IPC:', error);
+        throw error;
+    }
+};
+
+export const setGroupActions = async (
+    token: string,
+    groupId: string,
+    actions: YandexCapabilityAction[],
+): Promise<void> => {
+    try {
+        await yandexApi.setGroupActions(token, groupId, actions);
+    } catch (error) {
+        console.error('Ошибка при управлении умениями группы через IPC:', error);
+        throw error;
+    }
+};
+
+export const deleteDevice = async (token: string, deviceId: string): Promise<void> => {
+    try {
+        await yandexApi.deleteDevice(token, deviceId);
+    } catch (error) {
+        console.error('Ошибка при удалении устройства через IPC:', error);
         throw error;
     }
 };

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { YandexDevice } from '../../types/index';
-import { getIconForDevice, localizeUnit, isCameraDevice, isAlwaysOnDevice, formatFloatValue, isCameraPrivacyModeEnabled } from '../../constants';
+import { getIconForDevice, localizeUnit, isCameraDevice, isAlwaysOnDevice, formatFloatValue, isCameraPrivacyModeEnabled, isControllableCapability, getDeviceCapabilitySummaries } from '../../constants';
 import { Loader2, Star, Settings, Eye, EyeOff, Video, Mic, MicOff, Thermometer, Droplets } from 'lucide-react';
 import { SensorDisplayConfig } from '../modals/SensorSettingsModal';
 import { debugLog } from '../../utils/debugLog';
@@ -18,15 +18,15 @@ export interface DeviceCardProps {
   iconHiddenState?: boolean;
   onToggleVisibility?: (id: string) => void;
   sensorDisplayConfig?: Record<string, SensorDisplayConfig>;
+  isPending?: boolean;
 }
 
-export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onToggle, isFavorite, onToggleFavorite, onOpenSettings, onOpenCameraStream, isEditMode = false, iconHiddenState = false, onToggleVisibility }) => {
+export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onToggle, isFavorite, onToggleFavorite, onOpenSettings, onOpenCameraStream, isEditMode = false, iconHiddenState = false, onToggleVisibility, isPending = false }) => {
   const [loading, setLoading] = useState(false);
+  const isBusy = loading || isPending;
 
-  const isThermostat = device.type === 'devices.types.thermostat.ac' || device.type === 'devices.types.thermostat';
-  const isLight = device.type.startsWith('devices.types.light');
-  const isFan = device.type === 'devices.types.ventilation.fan';
   const isCamera = isCameraDevice(device);
+  const hasControls = device.capabilities.some(isControllableCapability);
 
   const onOffCapability = device.capabilities.find(c => c.type === 'devices.capabilities.on_off');
   const isToggleable = !!onOffCapability;
@@ -157,10 +157,15 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onToggle, isFavo
       : typeof rawSensorValue === 'string'
       ? `${rawSensorValue}${resolvedUnit ?? ''}`
         : null;
+  const capabilitySummaries = getDeviceCapabilitySummaries(device);
 
   const handleClick = async () => {
     if (isCamera && onOpenCameraStream) { onOpenCameraStream(device); return; }
-    if (!isToggleable || loading) return;
+    if (!isToggleable) {
+      if (hasControls && onOpenSettings) onOpenSettings(device);
+      return;
+    }
+    if (isBusy) return;
     setLoading(true);
     try { await onToggle(device.id, isOn); }
     catch (err) { console.error(err); }
@@ -169,21 +174,33 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onToggle, isFavo
 
   const handleContextMenu = (e: React.MouseEvent) => {
     if (isCamera && onOpenCameraStream) { e.preventDefault(); e.stopPropagation(); onOpenCameraStream(device); return; }
-    if ((isThermostat || isLight || isFan) && onOpenSettings) { e.preventDefault(); e.stopPropagation(); onOpenSettings(device); }
+    if (hasControls && onOpenSettings) { e.preventDefault(); e.stopPropagation(); onOpenSettings(device); }
   };
 
   const icon = getIconForDevice(device.type);
 
   return (
-    <div
-      onClick={handleClick}
+    <article
       onContextMenu={handleContextMenu}
       className={`device-card ${(isToggleable && isOn) || isCamera || isAlwaysOn ? 'is-on' : ''} ${isEditMode && iconHiddenState ? 'opacity-50 grayscale' : ''}`}
+      aria-busy={isBusy}
     >
+      <button
+        type="button"
+        className="device-card-hit-target"
+        onClick={handleClick}
+        disabled={isBusy}
+        aria-pressed={isToggleable ? isOn : undefined}
+        aria-label={isCamera
+          ? `Открыть камеру «${device.name}»`
+          : isToggleable
+            ? `${isOn ? 'Выключить' : 'Включить'} «${device.name}»`
+            : `Открыть управление «${device.name}»`}
+      />
       <div className="device-card-top">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div className={`device-icon ${(isOn && isToggleable) || isCamera || isAlwaysOn ? 'is-on' : ''}`}>
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: 'w-4 h-4' })}
+            {isBusy ? <Loader2 className="w-4 h-4 animate-spin" /> : React.cloneElement(icon as React.ReactElement<{ className?: string }>, { className: 'w-4 h-4' })}
           </div>
           {showMicStatus && (
             <span
@@ -199,27 +216,34 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onToggle, isFavo
         </div>
         <div style={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
           {isEditMode && onToggleVisibility && (
-            <div
+            <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); onToggleVisibility(`device_${device.id}`); }}
-              style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
               className="edit-vis-btn"
+              aria-label={iconHiddenState ? `Показать «${device.name}»` : `Скрыть «${device.name}»`}
+              aria-pressed={iconHiddenState}
             >
               {iconHiddenState ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            </div>
+            </button>
           )}
-          {(isThermostat || isLight || isFan) && onOpenSettings && (
-            <div
+          {hasControls && onOpenSettings && (
+            <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); onOpenSettings(device); }}
-              style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
               className="settings-btn"
-              title={isThermostat ? 'Настройки климата' : isFan ? 'Настройки вентилятора' : 'Настройки яркости'}
+              disabled={isBusy}
+              title="Все настройки устройства"
+              aria-label={`Открыть настройки «${device.name}»`}
             >
               <Settings className="w-3.5 h-3.5" />
-            </div>
+            </button>
           )}
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onToggleFavorite(device.id); }}
             className={`device-fav ${isFavorite ? 'is-fav' : ''}`}
+            aria-label={isFavorite ? `Удалить «${device.name}» из избранного` : `Добавить «${device.name}» в избранное`}
+            aria-pressed={isFavorite}
           >
             <Star className="w-3.5 h-3.5" fill={isFavorite ? 'currentColor' : 'none'} />
           </button>
@@ -228,7 +252,7 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onToggle, isFavo
 
       <div className="device-name">{device.name}</div>
       <div className="device-type-label">
-        {loading ? 'Обновление...' : (
+        {isBusy ? 'Выполняю команду…' : (
           temperatureValue !== null || humidityValue !== null ? (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 3 }}>
               {temperatureValue !== null && (
@@ -249,11 +273,17 @@ export const DeviceCard: React.FC<DeviceCardProps> = ({ device, onToggle, isFavo
         )}
       </div>
 
+      {capabilitySummaries.length > 0 && !isBusy && (
+        <div className="device-capability-chips" aria-label="Текущие настройки">
+          {capabilitySummaries.map((summary) => <span key={summary}>{summary}</span>)}
+        </div>
+      )}
+
       {isSensor && formattedSensorValue && !showMicStatus && (
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', marginTop: 'auto' }}>
           <span className="device-sensor-value">{formattedSensorValue}</span>
         </div>
       )}
-    </div>
+    </article>
   );
 };

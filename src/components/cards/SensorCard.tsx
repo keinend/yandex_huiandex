@@ -46,6 +46,7 @@ interface SensorCardProps {
   iconHiddenState?: boolean;
   onToggleVisibility?: (id: string) => void;
   sensorDisplayConfig?: Record<string, SensorDisplayConfig>;
+  isPending?: boolean;
 }
 
 interface PropertyData {
@@ -131,6 +132,7 @@ export const SensorCard: React.FC<SensorCardProps> = ({
   iconHiddenState = false,
   onToggleVisibility,
   sensorDisplayConfig,
+  isPending = false,
 }) => {
   const allProps = extractProperties(device);
 
@@ -181,11 +183,18 @@ export const SensorCard: React.FC<SensorCardProps> = ({
   };
 
   return (
-    <div
-      onClick={handleClick}
+    <article
       onContextMenu={handleContextMenu}
       className={`device-card sensor-card is-on ${isEditMode && iconHiddenState ? 'opacity-50 grayscale' : ''}`}
+      aria-busy={isPending}
     >
+      <button
+        type="button"
+        className="device-card-hit-target"
+        onClick={handleClick}
+        disabled={isPending}
+        aria-label={`Открыть показания и настройки датчика «${device.name}»`}
+      />
       <div className="device-card-top">
         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
           <div className="device-icon is-on">
@@ -194,27 +203,34 @@ export const SensorCard: React.FC<SensorCardProps> = ({
         </div>
         <div style={{ display: 'flex', gap: 2, alignItems: 'flex-start' }}>
           {isEditMode && onToggleVisibility && (
-            <div
+            <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); onToggleVisibility(`device_${device.id}`); }}
-              style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
               className="edit-vis-btn"
+              aria-label={iconHiddenState ? `Показать «${device.name}»` : `Скрыть «${device.name}»`}
+              aria-pressed={iconHiddenState}
             >
               {iconHiddenState ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-            </div>
+            </button>
           )}
           {onOpenSettings && (
-            <div
+            <button
+              type="button"
               onClick={(e) => { e.stopPropagation(); onOpenSettings(device); }}
-              style={{ width: 24, height: 24, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer' }}
               className="settings-btn"
+              disabled={isPending}
               title="Настройки отображения"
+              aria-label={`Настроить показания датчика «${device.name}»`}
             >
               <Settings className="w-3.5 h-3.5" />
-            </div>
+            </button>
           )}
           <button
+            type="button"
             onClick={(e) => { e.stopPropagation(); onToggleFavorite(device.id); }}
             className={`device-fav ${isFavorite ? 'is-fav' : ''}`}
+            aria-label={isFavorite ? `Удалить «${device.name}» из избранного` : `Добавить «${device.name}» в избранное`}
+            aria-pressed={isFavorite}
           >
             <Star className="w-3.5 h-3.5" fill={isFavorite ? 'currentColor' : 'none'} />
           </button>
@@ -246,6 +262,6 @@ export const SensorCard: React.FC<SensorCardProps> = ({
           </span>
         </div>
       )}
-    </div>
+    </article>
   );
 };

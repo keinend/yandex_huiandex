@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import { YandexDevice, YandexScenario } from '../types/index';
-import { Home } from 'lucide-react';
+import { Home, X } from 'lucide-react';
 import { useDashboardContext } from '../contexts/DashboardContext';
 import { SidebarHeader } from './sidebar/SidebarHeader';
 import { SidebarFavorites } from './sidebar/SidebarFavorites';
@@ -11,9 +11,10 @@ import { SidebarScenarios } from './sidebar/SidebarScenarios';
 
 interface SidebarProps {
     onOpenCameraStream?: (device: YandexDevice) => void;
+    onClose?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ onOpenCameraStream }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ onOpenCameraStream, onClose }) => {
     const ctx = useDashboardContext();
     const [loadingItems, setLoadingItems] = useState<Record<string, boolean>>({});
     const [collapsedSections, setCollapsedSections] = useState<Record<string, boolean>>({});
@@ -116,9 +117,13 @@ export const Sidebar: React.FC<SidebarProps> = ({ onOpenCameraStream }) => {
 
     return (
         <aside className="sidebar">
+            <button type="button" className="sidebar-mobile-close" onClick={onClose} aria-label="Закрыть боковую панель">
+                <X aria-hidden="true" />
+            </button>
             <SidebarHeader />
             <nav className="sidebar-nav">
                 <button
+                    type="button"
                     className={`sidebar-item ${ctx.activeSidebarView === 'home' ? 'active' : ''}`}
                     onClick={ctx.onSelectHome}
                 >

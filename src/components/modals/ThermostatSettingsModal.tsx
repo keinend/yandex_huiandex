@@ -139,6 +139,7 @@ export const ThermostatSettingsModal: React.FC<ThermostatSettingsModalProps> = (
 
   // Компонент для отображения иконки режима
   const ModeIconButton: React.FC<{
+    value?: string;
     label: string;
     icon: React.ComponentType<{ className?: string }>;
     isSelected: boolean;
