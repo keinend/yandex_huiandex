@@ -38,7 +38,7 @@ export const InfoModal: React.FC<InfoModalProps> = ({ isOpen, onClose, currentVe
     setError(null);
     try {
       const response = await fetch(
-        'https://api.github.com/repos/onegamerstory/Desktop-Yandex.Home-App/releases/latest'
+        'https://api.github.com/repos/keinend/yandex_huiandex/releases/latest'
       );
       if (!response.ok) {
         throw new Error('Не удалось получить информацию о последней версии');

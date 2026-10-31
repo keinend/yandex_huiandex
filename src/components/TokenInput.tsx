@@ -83,7 +83,7 @@ export const TokenInput: React.FC<TokenInputProps> = ({ onTokenSubmit, isLoading
 
         <div className="auth-help">
           <a 
-            href="https://github.com/onegamerstory/Desktop-Yandex.Home-App/blob/main/README.md" 
+            href="https://github.com/keinend/yandex_huiandex/blob/main/README.md"
             target="_blank" 
             rel="noopener noreferrer"
           >

@@ -18,7 +18,7 @@ const checkForUpdates = async (): Promise<UpdateInfo | null> => {
     if (import.meta.env.DEV && new URLSearchParams(window.location.search).has('mock')) return null;
     try {
         const response = await fetch(
-            'https://api.github.com/repos/onegamerstory/Desktop-Yandex.Home-App/releases/latest',
+            'https://api.github.com/repos/keinend/yandex_huiandex/releases/latest',
             { signal: AbortSignal.timeout(8000) }
         );
         if (!response.ok) {

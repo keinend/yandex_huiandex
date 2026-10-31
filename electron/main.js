@@ -309,7 +309,7 @@ if (!gotTheLock) {
     // Когда Electron готов
     app.whenReady().then(() => {
         if (process.platform === 'win32') {
-            app.setAppUserModelId('com.onegamerstory.smarthomecontrol');
+            app.setAppUserModelId('io.github.keinend.yandexhuiandex');
         }
 
         Menu.setApplicationMenu(null);

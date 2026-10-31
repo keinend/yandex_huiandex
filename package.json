@@ -1,7 +1,7 @@
 {
   "name": "yandex-smart-home-control",
   "private": true,
-  "version": "2.0.4",
+  "version": "2.0.5",
   "type": "module",
   "main": "electron/main.js",
   "scripts": {
@@ -36,10 +36,21 @@
     "vite": "^6.2.0",
     "vitest": "^3.2.4"
   },
-  "author": "История Одного Геймера <gamecuts0412@gmail.com>",
+  "author": {
+    "name": "keinend",
+    "url": "https://github.com/keinend"
+  },
+  "homepage": "https://github.com/keinend/yandex_huiandex",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/keinend/yandex_huiandex.git"
+  },
+  "bugs": {
+    "url": "https://github.com/keinend/yandex_huiandex/issues"
+  },
   "description": "Yandex Smart Home Control Application",
   "build": {
-    "appId": "com.onegamerstory.smarthomecontrol",
+    "appId": "io.github.keinend.yandexhuiandex",
     "productName": "Yandex Smart Home Control",
     "artifactName": "${productName} Setup v${version}.${ext}",
     "icon": "resources/icon.png",
@@ -52,6 +63,12 @@
     ],
     "directories": {
       "output": "release"
+    },
+    "publish": {
+      "provider": "github",
+      "owner": "keinend",
+      "repo": "yandex_huiandex",
+      "releaseType": "draft"
     },
     "win": {
       "target": "nsis",
@@ -92,7 +109,7 @@
       ],
       "category": "Utility",
       "icon": "resources/icon.png",
-      "maintainer": "История Одного Геймера <gamecuts0412@gmail.com>",
+      "maintainer": "keinend <231264219+keinend@users.noreply.github.com>",
       "description": "Yandex Smart Home Control Application",
       "executableName": "yandex-smart-home-control",
       "desktop": {
